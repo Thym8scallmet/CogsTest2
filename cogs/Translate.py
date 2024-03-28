@@ -6,6 +6,15 @@ from discord import Embed
 from discord.ext import commands
 
 
+def is_allowed_guild():
+    allowed_guild_ids = {1045479020940234783, 383365467894710272}  # Add Allowed Server IDs Here
+    async def predicate(ctx):
+        return ctx.guild and ctx.guild.id in allowed_guild_ids
+    return commands.check(predicate)
+
+
+
+
 class Translate(commands.Cog):
 
   def __init__(self, client: commands.Bot):
