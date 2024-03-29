@@ -22,6 +22,7 @@ async def setup_hook():
         "cogs.Feedback",
         "cogs.SSTimer",
         "cogs.MightDistribution",
+        "cogs.GetFlagData",
         "cogs.Translate",
     ]:
       current_cog = cog  # Update current_cog before attempting to load

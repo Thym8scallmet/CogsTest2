@@ -10,7 +10,7 @@ class Hello(commands.Cog):
   #Code for slash command hello.  It may be necessary to kick the bot and 
   #re-add it to the server to make sure the slash commands are updated.
   @app_commands.command(name="helloo", description="Says hello to the user")
-  async def slashhhello(self, interaction: discord.Interaction):
+  async def slashhelloo(self, interaction: discord.Interaction):
       await interaction.response.send_message(content="Hello this is a slash command")
 
 async def setup(client:commands.Bot) -> None:
