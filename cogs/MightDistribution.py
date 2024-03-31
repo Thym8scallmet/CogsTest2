@@ -1,5 +1,6 @@
 import json
-from typing import List
+import os
+from typing import List, Optional
 
 import discord
 from discord import app_commands
@@ -11,18 +12,22 @@ class MightDistribution(commands.Cog):
   def __init__(self, client: commands.Bot):
     self.client = client
 
-  async def load_player_data(self) -> List[dict]:
-    with open('playerlist.json', 'r', encoding='utf-8') as file:
-      data = json.load(file)
-      return sorted(data, key=lambda x: x.get('might', 0), reverse=True)
+  async def load_player_data(self, guild_id: int) -> List[dict]:
+    file_path = f'playerlist_{guild_id}.json'
+    try:
+      with open(file_path, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+    except FileNotFoundError:
+      data = []  # If the file does not exist, start with an empty list
+    return sorted(data, key=lambda x: x.get('might', 0), reverse=True)
 
-  async def save_player_data(self, players: List[dict]) -> None:
-    with open('playerlist.json', 'w', encoding='utf-8') as file:
+  async def save_player_data(self, players: List[dict], guild_id: int) -> None:
+    file_path = f'playerlist_{guild_id}.json'
+    with open(file_path, 'w', encoding='utf-8') as file:
       json.dump(players, file, indent=4)
-   
-  async def prepare_embed(self) -> discord.Embed:
-    players = await self.load_player_data()
 
+  async def prepare_embed(self, guild_id: int) -> discord.Embed:
+    players = await self.load_player_data(guild_id)
     # Allocate players to lanes to achieve a balanced might distribution
     lane1, lane2 = [], []
     lane3 = players[40:]  # Remaining players go here
@@ -60,58 +65,132 @@ class MightDistribution(commands.Cog):
 
     return embed
 
-  @app_commands.command(name="might_distribution",
+  @commands.Cog.listener()
+  async def on_guild_join(self, guild: discord.Guild):
+    file_path = f'playerlist_{guild.id}.json'
+    if not os.path.exists(file_path):
+      with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump([], file, indent=4)  # Initialize with an empty list
+
+  @app_commands.command(name="flag_capture_lineup",
                         description="Distributes the might of the players")
   async def might_distribution(self, interaction: discord.Interaction):
-    embed = await self.prepare_embed()
-    await interaction.response.send_message(embed=embed)
+    if interaction.guild is not None:
+      embed = await self.prepare_embed(interaction.guild.id)
+      await interaction.response.send_message(embed=embed)
+    else:
+      await interaction.response.send_message(
+          "This command cannot be used in DMs.", ephemeral=True)
 
-  @app_commands.command(name="display_players", description="Displays all the players and their might.")
-  async def display_players(self, interaction: discord.Interaction):
-      players = await self.load_player_data()
-      embed = discord.Embed(title="Players List", color=0x00ff00)
-      display_text = '\n'.join(f"{player['name']}: {player['might']}" for player in players)
-      embed.description = display_text
-      await interaction.response.send_message(embed=embed, ephemeral=True)  
-  
+  # Replacing original commands with the consolidated player_upkeep command
   @app_commands.command(
-      name="add_player",
-      description="Add a new player with Flag Capture march might.")
-  async def add_player(self, interaction: discord.Interaction, name: str,
-                       might: int):
-    players = await self.load_player_data()
-    players.append({"name": name, "might": might})
-    await self.save_player_data(players)
-    await interaction.response.send_message(
-        f"Added player {name} with might {might}.")    
-
-  # Autocomplete callback function
-  async def player_name_autocomplete(self, interaction: discord.Interaction, current: str):
-    players = await self.load_player_data()
-    return [
-        app_commands.Choice(name=player['name'], value=player['name'])
-        for player in players if current.lower() in player['name'].lower()
-    ][:25]  # Limit to 25 entries
-
-  @app_commands.command(name="remove_player", description="Remove a player by their name.")
-  @app_commands.autocomplete(name=player_name_autocomplete)  # Linking autocomplete to the 'name' parameter
-  async def remove_player(self, interaction: discord.Interaction, name: str):
-      players = await self.load_player_data()
-      players = [player for player in players if player['name'] != name]
-      await self.save_player_data(players)
-      await interaction.response.send_message(f"Removed player {name}.")
-
-  @app_commands.command(name="adjust_might", description="Adjust the might of a player.")
-  @app_commands.autocomplete(name=player_name_autocomplete)  # Linking autocomplete to the 'name' parameter
-  async def adjust_might(self, interaction: discord.Interaction, name: str, new_might: int):
-    players = await self.load_player_data()
-    for player in players:
-      if player['name'] == name:
-        player['might'] = new_might
-        await self.save_player_data(players)
-        await interaction.response.send_message(f"Updated {name}'s might to {new_might}.")
+      name="player_upkeep",
+      description="Manage player information for flag capture lineup")
+  @app_commands.choices(action=[
+      app_commands.Choice(name="add_player", value="add"),
+      app_commands.Choice(name="remove_player", value="remove"),
+      app_commands.Choice(name="adjust_might", value="adjust"),
+      app_commands.Choice(name="display_players", value="display"),
+      app_commands.Choice(
+          name="might_distribution", value="distribute"
+      )  # Including might_distribution as a subcommand action
+  ])
+  async def player_upkeep(self,
+                          interaction: discord.Interaction,
+                          action: app_commands.Choice[str],
+                          name: Optional[str] = None,
+                          might: Optional[int] = None):
+    if action.value == "add":
+      if not name or might is None:
+        await interaction.response.send_message(
+            "Please provide both a name and a might value.", ephemeral=True)
         return
-    await interaction.response.send_message(f"Player {name} not found.")
+      if interaction.guild is not None:
+        players = await self.load_player_data(interaction.guild.id)
+        players.append({"name": name, "might": might})
+        await self.save_player_data(players, interaction.guild.id
+                                    )  # Updated with guild_id
+        await interaction.response.send_message(
+            f"Added player {name} with might {might}.")
+      else:
+        await interaction.response.send_message(
+            "This command cannot be used in DMs.", ephemeral=True)
+
+    elif action.value == "remove":
+      if not name:
+        await interaction.response.send_message(
+            "Please provide a player name.", ephemeral=True)
+        return
+      if interaction.guild is not None:
+        players = await self.load_player_data(interaction.guild.id)
+        players = [player for player in players if player['name'] != name]
+        await self.save_player_data(players, interaction.guild.id
+                                    )  # Updated with guild_id
+        await interaction.response.send_message(f"Removed player {name}.")
+      else:
+        await interaction.response.send_message(
+            "This command cannot be used in DMs.", ephemeral=True)
+
+    elif action.value == "adjust":
+      if not name or might is None:
+        await interaction.response.send_message(
+            "Please provide both a name and a new might value.",
+            ephemeral=True)
+        return
+
+      if interaction.guild is not None:
+        players = await self.load_player_data(interaction.guild.id)
+        for player in players:
+          if player['name'] == name:
+            player['might'] = might
+            await self.save_player_data(players, interaction.guild.id
+                                        )  # Updated with guild_id
+            await interaction.response.send_message(
+                f"Updated {name}'s might to {might}.")
+            return
+        await interaction.response.send_message(f"Player {name} not found.")
+      else:
+        await interaction.response.send_message(
+            "This command cannot be used in DMs.", ephemeral=True)
+
+    elif action.value == "display":
+      await self.display_players(interaction)
+    elif action.value == "distribute":
+      # Code to call might_distribution directly
+      embed = await self.prepare_embed(interaction.guild.id)
+      await interaction.response.send_message(embed=embed)
+
+  # Display players command retained for use within player_upkeep
+  async def display_players(self, interaction: discord.Interaction):
+    if interaction.guild is not None:
+      players = await self.load_player_data(interaction.guild.id)
+      embed = discord.Embed(title="Players List", color=0x00ff00)
+      display_text = '\n'.join(f"{player['name']}: {player['might']}"
+                               for player in players)
+      embed.description = display_text
+      await interaction.response.send_message(embed=embed, ephemeral=True)
+    else:
+      await interaction.response.send_message(
+          "This command cannot be used in DMs.", ephemeral=True)
+
+  # Autocomplete callback function for player names
+  async def player_name_autocomplete(
+      self, interaction: discord.Interaction,
+      current: str) -> List[app_commands.Choice[str]]:
+    if interaction.guild is not None:
+      players = await self.load_player_data(interaction.guild.id)
+      return [
+          app_commands.Choice(name=player['name'], value=player['name'])
+          for player in players if current.lower() in player['name'].lower()
+      ][:25]  # Limit to 25 entries
+    else:
+      return []  # Return an empty list if the condition is not met
+
+  @player_upkeep.autocomplete('name')
+  async def name_autocomplete(self, interaction: discord.Interaction,
+                              current: str) -> List[app_commands.Choice[str]]:
+    return await self.player_name_autocomplete(interaction, current)
+
 
 async def setup(client: commands.Bot) -> None:
   await client.add_cog(MightDistribution(client))

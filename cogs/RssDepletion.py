@@ -66,24 +66,6 @@ class RssDepletion(commands.Cog):
   async def rss_depletion(self, interaction: discord.Interaction):
     await interaction.response.send_modal(self.RssModal(title="Resource Gathering Information"))
 
-  @app_commands.command(name="rss_depletion_help", description="Displays instructions on using the /rss_depletion command.")
-  async def rss_help(self, interaction: discord.Interaction):
-      embed = discord.Embed(
-          title="Rss Depletion Instructions",
-          description=(
-              "-Users can use the included command `/screenshot_timer` for a one minute timer-\n\n"
-              "The `/rss_depletion` command will ask for 2 values. To obtain these values:\n\n"
-              "- Take a screenshot of your alliance's Resource mill's View Details page.\n"
-              "- After one minute, take another screenshot of the same page.\n\n"            
-              "Once you have your screenshots, use the `/rss_depletion` command.\n\n"              
-              "The command will bring up a form asking you to provide 2 values.\n"
-              "Enter the information requested by the form, and the bot will\n"
-              "calculate and display the time until resource depletion.\n"
-          ),
-      )
-      await interaction.response.send_message(embed=embed)
-      #await msg.delete()
-
-
+ 
 async def setup(client:commands.Bot) -> None:
   await client.add_cog(RssDepletion(client))

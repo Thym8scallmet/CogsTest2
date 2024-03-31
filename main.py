@@ -24,6 +24,9 @@ async def setup_hook():
         "cogs.MightDistribution",
         "cogs.GetFlagData",
         "cogs.Translate",
+        "cogs.BotHelp",
+        "cogs.VotePoll",
+        "cogs.PinMessage",
     ]:
       current_cog = cog  # Update current_cog before attempting to load
       await client.load_extension(cog)
@@ -56,6 +59,12 @@ async def on_ready():
           " Commands")
     print(prfx + " Current Working Directory:" + Fore.YELLOW + os.getcwd())
     print(prfx + " Bot is Logged in and ready")
+
+  async def setup(client: commands.Bot):
+    vote_poll = VotePoll(client)
+    voting_modal = VotingModal(vote_poll)  # Pass vote_poll instance to VotingModal
+    await client.add_cog(vote_poll)
+    client.tree.add_command(create_poll)
 
 
 # Checks to make sure the token is loaded properly for Discord

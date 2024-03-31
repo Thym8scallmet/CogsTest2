@@ -16,14 +16,14 @@ class Feedback(commands.Cog):
   @app_commands.command(
       name="feedback",
       description="Provide feedback or report an issue about the bot.")
-  @app_commands.describe(details="Your feedback or issue report.")
+  @app_commands.describe(feedback_details="Your feedback or issue report.")
   async def feedback_command(self, interaction: discord.Interaction,
-                             details: str):
+                             feedback_details: str):
     # Include user and time in the feedback message
     user = interaction.user
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     feedback_message = (f"Feedback received from {user} ({user.id}) at {timestamp}:\n"
-                        f"{details}")
+                        f"{feedback_details}")
 
     # Attempt to send feedback to the bot owner
     owner = await self.client.fetch_user(self.owner_id)

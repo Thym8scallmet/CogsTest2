@@ -10,26 +10,6 @@ class PurgeBot(commands.Cog):
   def __init__(self, client: commands.Bot):
     self.client = client
 
-  @app_commands.command(name="purge_bot_help",
-                        description="Purge bot help and Information")
-  #@app_commands.guilds(
-      #discord.Object(id=1045479020940234783),
-      #discord.Object(id=383365467894710272))  # Enter Allowed Guild IDs
-  async def purgehelp(self, interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="Purge Bot Instructions",
-        description=
-        ("Purge bot is a helpful tool that can be used to delete messages from a channel.\n\n"
-         "To use the purge bot, you need to have the Admin role or manage messages permission.\n\n"
-         "For Purge bot to work, it must have the following Permissions:\n"
-         "1. Manage Messages\n2. View channel\n3. Read Message History\n4. Send Messages\n\n"
-         "Use:\n"
-         "- The /purge command to delete messages in a channel including messages older than 14 days.\n"
-         "- If there are several messages older than 14 days, please be patient as the process may take some time to complete.\n\n"
-         ),
-    )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-
   @app_commands.command(
       name="purge",
       description="Purge recent messages or messages older than 14 days")
