@@ -1,6 +1,8 @@
 import datetime
 import json
+import sys
 
+sys.path.append('/home/usename/.local/lib/python2.7/site-packages/')
 import discord
 import gspread
 from discord import app_commands

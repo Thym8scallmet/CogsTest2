@@ -2,7 +2,7 @@ import os
 
 import deepl
 import discord
-from discord import Embed
+from discord import Embed, app_commands
 from discord.ext import commands
 
 
@@ -11,8 +11,6 @@ def is_allowed_guild():
     async def predicate(ctx):
         return ctx.guild and ctx.guild.id in allowed_guild_ids
     return commands.check(predicate)
-
-
 
 
 class Translate(commands.Cog):
@@ -56,6 +54,41 @@ class Translate(commands.Cog):
         "🇹🇷": "TR",
         "🇺🇦": "UK",
         "🇻🇦": "la"
+    }
+    self.country_code_dict = {
+      "Arabic": "AR",
+      "Bulgarian": "BG",
+      "Czech": "CS",
+      "Danish": "DA",
+      "German": "DE",
+      "Greek": "EL",
+      "English": "EN",
+      "English (British)": "EN-GB",
+      "English (American)": "EN-US",
+      "Spanish": "ES",
+      "Estonian": "ET",
+      "Finnish": "FI",
+      "French": "FR",
+      "Hungarian": "HU",
+      "Indonesian": "ID",
+      "Italian": "IT",
+      "Japanese": "JA",
+      "Korean": "KO",
+      "Lithuanian": "LT",
+      "Latvian": "LV",
+      "Norwegian":"NB",
+      "Dutch": "NL",
+      "Polish": "PL",
+      "Portuguese": "PT-BR",
+      "Portuguese (Brazilian)": "PT-BR",
+      "Romanian": "RO",
+      "Russian": "RU",
+      "Slovenian": "SL",
+      "Slovak": "SK",
+      "Swedish": "SV",
+      "Turkish": "TR",
+      "Ukrainian": "UK",
+      "Chinese": "ZH",
     }
 
  
@@ -105,6 +138,18 @@ class Translate(commands.Cog):
               if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
                   await channel.send(f"Error during translation: {e}")
 
+
+  @app_commands.command(name="check_translator_usage", description="Checks the usage of the translator")
+  async def checkusage(self, interaction: discord.Interaction):
+    usage = self.translator.get_usage()
+    if usage.character.valid:
+      total_usage=usage.character.count
+      limit_usage=usage.character.limit
+      message_content = (  
+          f"You have used: {total_usage} characters out of the: {limit_usage} Characters."
+ 
+)
+      await interaction.response.send_message(message_content)
 
 async def setup(client: commands.Bot) -> None:
   await client.add_cog(Translate(client))

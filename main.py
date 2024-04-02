@@ -27,6 +27,7 @@ async def setup_hook():
         "cogs.BotHelp",
         "cogs.VotePoll",
         "cogs.PinMessage",
+        "cogs.GetSendGather",
     ]:
       current_cog = cog  # Update current_cog before attempting to load
       await client.load_extension(cog)
