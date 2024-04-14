@@ -14,7 +14,7 @@ async def setup_hook():
   current_cog = None  # Introduce variable to keep track of the current cog
   try:
     for cog in [
-        "cogs.Hello",
+        "cogs.Hello",        
         "cogs.TileRS",
         "cogs.PurgeBot",
         "cogs.RssDepletion",
@@ -28,6 +28,10 @@ async def setup_hook():
         "cogs.VotePoll",
         "cogs.PinMessage",
         "cogs.GetSendGather",
+        "cogs.AutoTranslate",
+        "cogs.NewCommand",
+        "cogs.TranslateUsage",
+        "cogs.ApexLine",
     ]:
       current_cog = cog  # Update current_cog before attempting to load
       await client.load_extension(cog)

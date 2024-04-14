@@ -1,13 +1,14 @@
+import json
 import os
 
 import deepl
 import discord
-from discord import Embed, app_commands
+from discord import Embed
 from discord.ext import commands
 
 
 def is_allowed_guild():
-    allowed_guild_ids = {1045479020940234783, 383365467894710272}  # Add Allowed Server IDs Here
+    allowed_guild_ids = {1045479020940234783, 383365467894710272}  # Add your guild IDs here
     async def predicate(ctx):
         return ctx.guild and ctx.guild.id in allowed_guild_ids
     return commands.check(predicate)
@@ -15,141 +16,69 @@ def is_allowed_guild():
 
 class Translate(commands.Cog):
 
-  def __init__(self, client: commands.Bot):
-    self.client = client
-    deepl_key = os.getenv("DEEPLKEY")
-    if deepl_key is None:
-      raise ValueError("DEEPLKEY environment variable is not set")
-    self.translator = deepl.Translator(deepl_key)
-    self.flag_emoji_dict = {
-        "🇺🇸": "EN-US",
-        '🇬🇧': 'EN-GB',
-        "🇩🇪": "DE",
-        "🇫🇷": "FR",
-        "🇪🇸": "ES",
-        "🇮🇹": "IT",
-        "🇵🇹": "PT-PT",
-        "🇷🇺": "RU",
-        "🇸🇦": "AR",
-        "🇧🇬": "BG",
-        "🇨🇳": "ZH",
-        "🇨🇿": "CS",
-        "🇩🇰": "DA",
-        "🇪🇪": "ET",
-        "🇫🇮": "FI",
-        "🇬🇷": "EL",
-        "🇭🇺": "HU",
-        "🇮🇩": "ID",
-        "🇯🇵": "JA",
-        "🇰🇷": "KO",
-        "🇱🇻": "LV",
-        "🇱🇹": "LT",
-        "🇳🇱": "NL",
-        "🇳🇴": "NB",
-        "🇵🇱": "PL",
-        "🇷🇴": "RO",
-        "🇸🇰": "SK",
-        "🇸🇮": "SL",
-        "🇸🇬": "SV",
-        "🇹🇷": "TR",
-        "🇺🇦": "UK",
-        "🇻🇦": "la"
-    }
-    self.country_code_dict = {
-      "Arabic": "AR",
-      "Bulgarian": "BG",
-      "Czech": "CS",
-      "Danish": "DA",
-      "German": "DE",
-      "Greek": "EL",
-      "English": "EN",
-      "English (British)": "EN-GB",
-      "English (American)": "EN-US",
-      "Spanish": "ES",
-      "Estonian": "ET",
-      "Finnish": "FI",
-      "French": "FR",
-      "Hungarian": "HU",
-      "Indonesian": "ID",
-      "Italian": "IT",
-      "Japanese": "JA",
-      "Korean": "KO",
-      "Lithuanian": "LT",
-      "Latvian": "LV",
-      "Norwegian":"NB",
-      "Dutch": "NL",
-      "Polish": "PL",
-      "Portuguese": "PT-BR",
-      "Portuguese (Brazilian)": "PT-BR",
-      "Romanian": "RO",
-      "Russian": "RU",
-      "Slovenian": "SL",
-      "Slovak": "SK",
-      "Swedish": "SV",
-      "Turkish": "TR",
-      "Ukrainian": "UK",
-      "Chinese": "ZH",
-    }
+    def __init__(self, client: commands.Bot):
+        self.client = client
+        deepl_key = os.getenv("DEEPLKEY")
+        if deepl_key is None:
+            raise ValueError("DEEPLKEY environment variable is not set")
+        self.translator = deepl.Translator(deepl_key)
+        self.language_dict = self.load_language_dict()
 
- 
-  @commands.Cog.listener()
-  async def on_raw_reaction_add(self, payload):
-      channel = self.client.get_channel(payload.channel_id)
-      message = None  # Initialize message to avoid it being possibly unbound
+    def load_language_dict(self):
+        try:
+            with open('cogs/cogfiles/FlagDict.json', 'r') as lang_file:
+                return json.load(lang_file)
+        except Exception as e:
+            print(f"Failed to load language dictionary: {e}")
+            return {}
 
-      # Check if the channel is None
-      if channel is None:
-          return
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        print(f"Reaction received: {payload.emoji}")  # Log received reactions
+        channel = self.client.get_channel(payload.channel_id)
 
-      # Ensure that the `fetch_message` method exists for the channel type
-      if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
-          try:
-              message = await channel.fetch_message(payload.message_id)
-          except discord.NotFound:
-              # Handle the case where the message does not exist
-              return
-          except discord.Forbidden:
-              # Handle the case where the bot does not have permissions to fetch the message
-              return
-          except discord.HTTPException:
-              # Handle other possible HTTP exceptions
-              return
+        messages = []  # Initialize messages as an empty list
 
-      # Ensure message is not None and has content before proceeding
-      if message is None or not message.content:
-          return
+        # Adapted to fetch the last 10 messages for translating in DMs
+        if isinstance(channel, discord.DMChannel):
+            messages = [message async for message in channel.history(limit=10)]
+        else:
+            message = None
+            if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
+                try:
+                    message = await channel.fetch_message(payload.message_id)
+                except discord.NotFound:
+                    return
+                except discord.Forbidden:
+                    return
+                except discord.HTTPException:
+                    return
+                messages = [message]
 
-      if str(payload.emoji) in self.flag_emoji_dict:
-          lang_code = self.flag_emoji_dict[str(payload.emoji)]
-          try:
-              result = self.translator.translate_text(message.content,
-                                                      target_lang=lang_code)
-              translated_message = result.text
-              detected_lang = result.detected_source_lang
+        if not messages:
+            return
 
-              embed = Embed(title="Translation", color=0x00ff00)
-              embed.add_field(name="Original", value=message.content, inline=False)
-              embed.add_field(name=f"Translated from {detected_lang} to {lang_code}",
-                              value=translated_message,
-                              inline=False)
-              if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
-                  await channel.send(embed=embed)
-          except Exception as e:
-              if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
-                  await channel.send(f"Error during translation: {e}")
+        if str(payload.emoji) in self.language_dict:
+            lang_code = self.language_dict[str(payload.emoji)]
+            for message in messages:
+                try:
+                    result = self.translator.translate_text(message.content,
+                                                            target_lang=lang_code)
+                    translated_message = result.text
+                    detected_lang = result.detected_source_lang
 
+                    embed = Embed(title="Translation", color=0x00ff00)
+                    embed.add_field(name="Original", value=message.content, inline=False)
+                    embed.add_field(name=f"Translated from {detected_lang} to {lang_code}",
+                                    value=translated_message,
+                                    inline=False)
+                    if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
+                        await channel.send(embed=embed)
+                except Exception as e:
+                    if isinstance(channel, (discord.TextChannel, discord.DMChannel, discord.GroupChannel)):
+                        await channel.send(f"Error during translation: {e}")
+                    break  # If an error occurs, break the loop to prevent spamming the channel
 
-  @app_commands.command(name="check_translator_usage", description="Checks the usage of the translator")
-  async def checkusage(self, interaction: discord.Interaction):
-    usage = self.translator.get_usage()
-    if usage.character.valid:
-      total_usage=usage.character.count
-      limit_usage=usage.character.limit
-      message_content = (  
-          f"You have used: {total_usage} characters out of the: {limit_usage} Characters."
- 
-)
-      await interaction.response.send_message(message_content)
 
 async def setup(client: commands.Bot) -> None:
-  await client.add_cog(Translate(client))
+    await client.add_cog(Translate(client))
