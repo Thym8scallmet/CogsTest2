@@ -42,20 +42,12 @@ class MightDistribution(commands.Cog):
           elif len(lane2) < lane_size:
               lane2.append(player)
               lane2_might += player['might']
-
-      # Check if lane1 contains more players than intended and adjust.
-      if len(lane1) > lane_size:
-          # Reducing lane1 by the extra count and adjusting the starting index for lane3
-          excess_players = len(lane1) - lane_size
-          lane1 = lane1[:-excess_players]
-
-      # Handle the edge case to balance lane2 if necessary
-      if len(lane1) > len(lane2) and (len(players) > lane_allocation_size):
-          # Taking the next player from the remaining list and adding it to lane2
-          next_player = players[lane_allocation_size]
-          lane2.append(next_player)
-          lane2_might += next_player['might']
-          lane_allocation_size += 1  # Increase allocation size to account for the moved player
+  
+      
+      if len(lane1) < lane_size and (len(players) > lane_allocation_size):
+          # Move a player from the next in list into lane1 if possible
+          lane1.append(players[lane_allocation_size])
+          lane_allocation_size += 1  # Adjust the marker for the start of Lane 3
 
       # Assigning the remaining players to lane3
       lane3 = players[lane_allocation_size:]

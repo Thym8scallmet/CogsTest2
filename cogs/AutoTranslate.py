@@ -198,7 +198,7 @@ class AutoTranslate(commands.Cog):
         f"Set translations from {source_channel.mention} to {target_channel.mention} in the specified language.",
         ephemeral=True)
 
-  @app_commands.command(name="remove_translate",
+  @app_commands.command(name="remove_translation_job",
                         description="Remove a translation job.")
   async def remove_translate(self, interaction: discord.Interaction):
     if not self.guild_check(interaction):
