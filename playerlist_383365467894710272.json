@@ -92,10 +92,6 @@
         "might": 1881685
     },
     {
-        "name": "Sheep",
-        "might": 1717939
-    },
-    {
         "name": "Metaleagle",
         "might": 1439290
     },
@@ -182,6 +178,10 @@
     {
         "name": "TimEnchanterPrime",
         "might": 294029
+    },
+    {
+        "name": "BOB",
+        "might": 234567
     },
     {
         "name": "HushPuppy",
@@ -272,7 +272,7 @@
         "might": 4639
     },
     {
-        "name": "BOB",
-        "might": 234567
+        "name": "Sheep",
+        "might": 1740844
     }
 ]

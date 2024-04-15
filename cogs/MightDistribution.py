@@ -1,3 +1,4 @@
+
 import json
 import os
 from typing import List, Optional
@@ -26,44 +27,57 @@ class MightDistribution(commands.Cog):
     with open(file_path, 'w', encoding='utf-8') as file:
       json.dump(players, file, indent=4)
 
-  async def prepare_embed(self, guild_id: int) -> discord.Embed:
-    players = await self.load_player_data(guild_id)
-    # Allocate players to lanes to achieve a balanced might distribution
-    lane1, lane2 = [], []
-    lane3 = players[40:]  # Remaining players go here
-    top_40_players = players[:40]
+  async def prepare_embed(self, guild_id: int, lane_size: int = 20) -> discord.Embed:
+      players = await self.load_player_data(guild_id)
+      # Initial allocation based on the lane_size for the first two lanes
+      lane_allocation_size = lane_size * 2
+      top_players = players[:lane_allocation_size]
+      lane1, lane2 = [], []
+      lane1_might, lane2_might = 0, 0
 
-    lane1_might, lane2_might = 0, 0
+      for player in top_players:
+          if lane1_might <= lane2_might and len(lane1) < lane_size:
+              lane1.append(player)
+              lane1_might += player['might']
+          elif len(lane2) < lane_size:
+              lane2.append(player)
+              lane2_might += player['might']
 
-    for player in top_40_players:
-      # Place the player in the lane with the lesser total might
-      if lane1_might <= lane2_might:
-        lane1.append(player)
-        lane1_might += player['might']
-      else:
-        lane2.append(player)
-        lane2_might += player['might']
-    lane3_might = sum(player['might'] for player in lane3)
+      # Check if lane1 contains more players than intended and adjust.
+      if len(lane1) > lane_size:
+          # Reducing lane1 by the extra count and adjusting the starting index for lane3
+          excess_players = len(lane1) - lane_size
+          lane1 = lane1[:-excess_players]
 
-    embed = discord.Embed(
-        title="Flag Capture Lane Setup",
-        description=
-        "Players are divided into three lanes based on balanced might distribution.",
-        color=0x00ff00)
+      # Handle the edge case to balance lane2 if necessary
+      if len(lane1) > len(lane2) and (len(players) > lane_allocation_size):
+          # Taking the next player from the remaining list and adding it to lane2
+          next_player = players[lane_allocation_size]
+          lane2.append(next_player)
+          lane2_might += next_player['might']
+          lane_allocation_size += 1  # Increase allocation size to account for the moved player
 
-    for index, (lane, total_might) in enumerate(zip(
-        [lane1, lane2, lane3], [lane1_might, lane2_might, lane3_might]),
-                                                start=1):
-      lane_description = '\n'.join([
-          f"{idx + 1}. {player['name']}: {player['might']:,}"
-          for idx, player in enumerate(lane)
-      ])
-      lane_description += f"\n**Total Might**: {total_might:,}"
-      embed.add_field(name=f"Lane {index}",
-                      value=lane_description,
-                      inline=False)
+      # Assigning the remaining players to lane3
+      lane3 = players[lane_allocation_size:]
+      lane3_might = sum(player['might'] for player in lane3)
 
-    return embed
+      # The embedding setup remains the same
+      embed = discord.Embed(
+          title="Flag Capture Lane Setup",
+          description="Players are divided into lanes based on balanced might distribution.",
+          color=0x00ff00)
+
+      for index, (lane, total_might) in enumerate(zip(
+          [lane2, lane3, lane1], [lane2_might, lane3_might, lane1_might]),
+                                                  start=1):
+          lane_description = '\n'.join([
+              f"{idx + 1}. {player['name']}: {player['might']:,}"
+              for idx, player in enumerate(lane)
+          ])
+          lane_description += f"\n**Total Might**: {total_might:,}"
+          embed.add_field(name=f"Lane {index}", value=lane_description, inline=False)
+
+      return embed
 
   @commands.Cog.listener()
   async def on_guild_join(self, guild: discord.Guild):
@@ -74,15 +88,18 @@ class MightDistribution(commands.Cog):
 
   @app_commands.command(name="flag_capture_lineup",
                         description="Distributes the might of the players")
-  async def might_distribution(self, interaction: discord.Interaction):
+  @app_commands.describe(lane_size="Number of players in each of the first two lanes")
+  async def might_distribution(self, interaction: discord.Interaction, lane_size: int = 20):
     if interaction.guild is not None:
-      embed = await self.prepare_embed(interaction.guild.id)
+      # Validate lane_size
+      if lane_size < 1:
+          await interaction.response.send_message("Lane size must be at least 1.", ephemeral=True)
+          return
+      embed = await self.prepare_embed(interaction.guild.id, lane_size)
       await interaction.response.send_message(embed=embed)
     else:
-      await interaction.response.send_message(
-          "This command cannot be used in DMs.", ephemeral=True)
+      await interaction.response.send_message("This command cannot be used in DMs.", ephemeral=True)
 
-  # Replacing original commands with the consolidated player_upkeep command
   @app_commands.command(
       name="player_upkeep",
       description="Manage player information for flag capture lineup")

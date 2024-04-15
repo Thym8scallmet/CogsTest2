@@ -158,7 +158,7 @@ class AutoTranslate(commands.Cog):
     ][:25]
 
   @app_commands.command(
-      name="set_translate",
+      name="set_channel_translation",
       description=
       "Set a source channel, a target channel, and the target language for automatic translation."
   )
